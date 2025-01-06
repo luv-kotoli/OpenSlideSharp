@@ -175,7 +175,7 @@ namespace OpenSlideSharp.BruTile.DPTSlide
             });
 
             // 将区域融合为一个Mat
-            using Mat regionMat = new Mat(new Size(realRegionEndX - scaledX + 1, realRegionEndY - scaledY + 1), MatType.CV_8UC3, new Scalar(0, 0, 0));
+            Mat regionMat = new Mat(new Size(realRegionEndX - scaledX + 1, realRegionEndY - scaledY + 1), MatType.CV_8UC3, new Scalar(0, 0, 0));
             using Mat failedImgMat = new Mat(new Size((int)(DptFile.SingleImageWidth * scale), (int)(DptFile.SingleImageHeight * scale)),
                                            MatType.CV_8UC3, new Scalar(251, 251, 251));
             int idx = 0; //序号：用于保存
@@ -251,16 +251,15 @@ namespace OpenSlideSharp.BruTile.DPTSlide
 
             return rgbData;
 
-
         }
 
         public byte[] GetTile(int row, int col, int z, int tileSize, int layer)
         {
             Mat realTileMat = new Mat(new Size(tileSize, tileSize), MatType.CV_8UC3, new Scalar(251,251,251));
-            int btmLayerPosX = row * tileSize * (int)Math.Pow(4, layer);
-            int btmLayerPosY = col * tileSize * (int)Math.Pow(4, layer);
+            int btmLayerPosX = col * tileSize * (int)Math.Pow(4, layer);
+            int btmLayerPosY = row * tileSize * (int)Math.Pow(4, layer);
 
-            Mat tileMat = ReadRegion(btmLayerPosX, btmLayerPosY, tileSize, tileSize, layer, out int  realWidth, out int realHeight, z: z);
+            using Mat tileMat = ReadRegion(btmLayerPosX, btmLayerPosY, tileSize, tileSize, layer, out int  realWidth, out int realHeight, z: z);
 
             // 针对边界tile的处理，当tile实际大小与tileSize不同时
             // 确保tile大小为tileSize*tileSize

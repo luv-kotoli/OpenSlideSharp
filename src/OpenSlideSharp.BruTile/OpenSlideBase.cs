@@ -31,7 +31,7 @@ namespace OpenSlideSharp.BruTile
                 OriginX = 0,
                 OriginY = 0,
             };
-            InitResolutions(Schema.Resolutions, 256, 256);
+            InitResolutions(Schema.Resolutions, 1024, 1024);
         }
 
         public static string DetectVendor(string source)
