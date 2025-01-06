@@ -20,6 +20,7 @@ namespace OpenSlideSharp.BruTile.DPTSlide
         private ConcurrentDictionary<ImagePosInfo, ImageDataInfo> ImageInfos = new ConcurrentDictionary<ImagePosInfo, ImageDataInfo>();
         public int WSIWidth;
         public int WSIHeight;
+        private float[,] CCM;
 
         // 添加缓存部分
         private readonly bool _enableCache;
@@ -31,6 +32,13 @@ namespace OpenSlideSharp.BruTile.DPTSlide
             DptFile = new DPTWSIFile(filePath);
             Stream = DptFile.GetFileStream();
             Reader = DptFile.GetReader();
+            CCM = new float[,] 
+            {
+                {1.5359419584274292f, -0.4762600064277649f, -0.06893599778413773f },
+                {-0.453308999f, 1.7416930198f, -0.31106099486351013f },
+                {-0.050136998295784f, -0.5789409875869751f, 1.590363979f }
+            };
+
             int imageNum = (int)DptFile.ImageNum;
 
             // 初始化ImageInfos对象
@@ -259,18 +267,23 @@ namespace OpenSlideSharp.BruTile.DPTSlide
             int btmLayerPosX = col * tileSize * (int)Math.Pow(4, layer);
             int btmLayerPosY = row * tileSize * (int)Math.Pow(4, layer);
 
-            using Mat tileMat = ReadRegion(btmLayerPosX, btmLayerPosY, tileSize, tileSize, layer, out int  realWidth, out int realHeight, z: z);
+            Mat tileMat = ReadRegion(btmLayerPosX, btmLayerPosY, tileSize, tileSize, layer, out int  realWidth, out int realHeight, z: z);
+
+            // 颜色校正
+            tileMat = ApplyCCM(tileMat, CCM);
 
             // 针对边界tile的处理，当tile实际大小与tileSize不同时
             // 确保tile大小为tileSize*tileSize
             if (realWidth != tileSize || realHeight != tileSize)
             {
-                tileMat.CopyTo(realTileMat[new Rect(0, 0, tileMat.Width, tileMat.Height)]);
+                tileMat.CopyTo(realTileMat[new Rect(0, 0, realWidth, realHeight)]);
             }
             else tileMat.CopyTo(realTileMat);
 
             // jpeg 压缩
-            var jpegData = tileMat.ImEncode(".jpg"); 
+            var jpegData = realTileMat.ImEncode(".jpg");
+            tileMat.Dispose();
+            realTileMat.Dispose();
             return jpegData;
         }
 
@@ -320,6 +333,46 @@ namespace OpenSlideSharp.BruTile.DPTSlide
             {
                 resolutions.Add(i, new Resolution(i, MinUnitsPerPixel * Math.Pow(4,i),tileWidth, tileHeight));
             }
+        }
+
+        private static Mat ApplyCCM(Mat inputImage, float[,] ccm)
+        {
+            if (inputImage == null || inputImage.Empty())
+                throw new ArgumentException("Input image is null or empty.");
+            if (inputImage.Type() != MatType.CV_8UC3)
+                throw new ArgumentException("Input image must be of type CV_8UC3.");
+            if (ccm.GetLength(0) != 3 || ccm.GetLength(1) != 3)
+                throw new ArgumentException("CCM must be a 3x3 matrix.");
+
+            // Create an output image with the same size and type
+            Mat outputImage = new Mat(inputImage.Size(), inputImage.Type());
+
+            // Iterate through each pixel
+            for (int row = 0; row < inputImage.Rows; row++)
+            {
+                for (int col = 0; col < inputImage.Cols; col++)
+                {
+                    // Get the current pixel's BGR values as Vec3b (byte per channel)
+                    Vec3b pixel = inputImage.At<Vec3b>(row, col);
+
+                    // Apply the CCM to the pixel
+                    float newBlue = pixel[0] * ccm[0, 0] + pixel[1] * ccm[0, 1] + pixel[2] * ccm[0, 2];
+                    float newGreen = pixel[0] * ccm[1, 0] + pixel[1] * ccm[1, 1] + pixel[2] * ccm[1, 2];
+                    float newRed = pixel[0] * ccm[2, 0] + pixel[1] * ccm[2, 1] + pixel[2] * ccm[2, 2];
+
+                    // Clamp the values to [0, 255] and assign to the new pixel
+                    Vec3b correctedPixel = new Vec3b
+                    {
+                        Item0 = (byte)(newBlue <0 ? 0 : (newBlue>255 ? 255: newBlue)),
+                        Item1 = (byte)(newGreen < 0 ? 0 : (newGreen > 255 ? 255 : newGreen)),
+                        Item2 = (byte)(newRed < 0 ? 0 : (newRed > 255 ? 255 : newRed))
+                    };
+
+                    // Set the corrected pixel to the output image
+                    outputImage.Set(row, col, correctedPixel);
+                }
+            }
+            return outputImage;
         }
     }
 }
