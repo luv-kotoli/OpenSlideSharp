@@ -14,11 +14,12 @@
     <Description>OpenSlideSharp for BruTile</Description>
     <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
     <Version>1.1.2</Version>
+	<LangVersion>8.0</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="BruTile" Version="[4,5)" />
-    <PackageReference Include="OpenCvSharp4.Windows" Version="[4.3.0.20200405,)" />
+    <PackageReference Include="BruTile" Version="4.0.0" />
+    <PackageReference Include="OpenCvSharp4.Windows" Version="4.3.0.20200701" />
   </ItemGroup>
 
   <ItemGroup>

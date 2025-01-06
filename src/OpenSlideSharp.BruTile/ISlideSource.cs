@@ -1,6 +1,7 @@
 ﻿using BruTile;
 using BruTile.Cache;
 using OpenCvSharp;
+using OpenSlideSharp.BruTile.DPTSlide;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -34,6 +35,9 @@ namespace OpenSlideSharp.BruTile
             {
                 if (keyValuePairs.TryGetValue(ext, out var factory) && factory != null)
                     return factory.Invoke(source, enableCache);
+
+                if (ext == ".DYJ")
+                    return new DPTSlideBase(source, enableCache);
 
                 if (!string.IsNullOrEmpty(OpenSlideBase.DetectVendor(source)))
                     return new OpenSlideBase(source, enableCache);
